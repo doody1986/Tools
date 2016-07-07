@@ -20,7 +20,7 @@ for i in range(num_files):
   filename_list.append(sys.argv[i+1])
 
 # Regular expression to extract values
-regex_kernel = re.compile(r"^(?:void)? (?:\w+(?:::))*(\w+)(?:<.*>)*\(.*\)$")
+regex_kernel = re.compile(r"^(?:void )?(?:\w+(?:::))*(\w+)(?:<.*>)*(?:\(.*\))*$")
 regex_int = re.compile(r"^\(*(\d+)\)*$")
 regex_float = re.compile(r"(\d+\.\d+(e\+)*\d*)(?:\w+\/\w+|%)*")
 
@@ -60,6 +60,8 @@ for filename in filename_list:
   kernel_id = 0
   kernel_list = []
   for row in log_file:
+    if len(row) < 8:
+      continue
     kernel_name = row[1]
 
     # Insert kernel name if new kernel is encountered
