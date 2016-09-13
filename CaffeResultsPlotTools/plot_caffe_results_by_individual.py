@@ -58,6 +58,7 @@ def main():
 
     file_obj.close()
 
+  prefix = file_name_list[0].split('.')[0]
 
   # Generate plot
   plt.figure(1)
@@ -75,13 +76,12 @@ def main():
              ncol=3, mode="expand", borderaxespad=0.)
 
   plt.tight_layout()
-  plt.savefig('training_loss.png', bbox_inches='tight')
+  plt.savefig(prefix + '_training_loss.png', bbox_inches='tight')
 
   plt.figure(2)
   # index for accessing label and line pattern
   idx = 0
   for key in test_loss_dict:
-    print test_loss_dict[key]
     plt.plot(test_loss_dict[key], line_pattern[idx],
            label=labels[idx],
            linewidth=2)
@@ -93,7 +93,7 @@ def main():
              ncol=3, mode="expand", borderaxespad=0.)
 
   plt.tight_layout()
-  plt.savefig('test_loss.png', bbox_inches='tight')   
+  plt.savefig(prefix + '_test_loss.png', bbox_inches='tight')   
 
   plt.figure(3)
   # index for accessing label and line pattern
@@ -110,7 +110,7 @@ def main():
              ncol=3, mode="expand", borderaxespad=0.)
 
   plt.tight_layout()
-  plt.savefig('accuracy.png', bbox_inches='tight')
+  plt.savefig(prefix + '_accuracy.png', bbox_inches='tight')
   print "End..."
 
 
