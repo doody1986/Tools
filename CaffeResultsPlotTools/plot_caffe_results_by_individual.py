@@ -9,9 +9,12 @@ training_loss_dict = collections.OrderedDict()
 test_accuracy_dict = collections.OrderedDict()
 test_loss_dict = collections.OrderedDict()
 
+usage = "Accept multiple results files"
+
 def main():
   if len(sys.argv) < 2:
     print "Too few argument"
+    print usage
     exit()
 
   file_name_list = sys.argv
@@ -111,6 +114,7 @@ def main():
 
   plt.tight_layout()
   plt.savefig(prefix + '_accuracy.png', bbox_inches='tight')
+
   print "End..."
 
 
