@@ -10,8 +10,8 @@ from optparse import OptionParser
 metrics_trace_list = []
 gpu_trace_list = []
 
-regex_kernel = re.compile(r"(?:void)?\s?(?:\w+(?:::))*(\w+)(?:<.*>)*\(?.*\)?$")
-regex_int = re.compile(r"^(?:\w+)*\s*\(*(\d+)\)*$")
+regex_kernel = re.compile(r"(?:void)?\s?(?:\w+(?:::))*(\w+<.*>)\(?.*\)?$")
+regex_int = re.compile(r"^(?:[a-zA-z]+)*\s*\(*(\d+)\)*$")
 regex_float = re.compile(r"(\d+\.\d+(e\+)*\d*)(?:\w+\/\w+|%)*")
 
 kernel_idx = 1
@@ -41,17 +41,22 @@ def GenerateDict():
     print "Process metric trace file: ", f
     reader = csv.reader(open(f, 'rb'))
 
-    # The metric files has to be like <layer_name>_config_<batch_size>.csv
-    layer_name = f[0:-4].split('_')[0]
-    batch_size = int(f[0:-4].split('_')[2])
+    # The metric files has to be like <propagation>_<layer_name>_config_<batch_size>.csv
+    propagation = f[0:-4].split('_')[0]
+    layer_name = f[0:-4].split('_')[1]
+    batch_size = int(f[0:-4].split('_')[3])
+    print "  Propagation: ", propagation
     print "  Layer name: ", layer_name
     print "  Batch size: ", str(batch_size)
 
     if layer_name not in trace_dict:
       trace_dict[layer_name] = collections.OrderedDict()
 
-    if batch_size not in trace_dict[layer_name]:
-      trace_dict[layer_name][batch_size] = collections.OrderedDict()
+    if propagation not in trace_dict[layer_name]:
+      trace_dict[layer_name][propagation] = collections.OrderedDict()
+
+    if batch_size not in trace_dict[layer_name][propagation]:
+      trace_dict[layer_name][propagation][batch_size] = collections.OrderedDict()
 
     for i in range(num_useless_lines):
       next(reader)
@@ -62,8 +67,8 @@ def GenerateDict():
       if regex_kernel.match(row[kernel_idx]):
         content = row[kernel_idx]
         kernel_name = regex_kernel.match(content).group(1)
-        if kernel_name not in trace_dict[layer_name][batch_size]:
-          trace_dict[layer_name][batch_size][kernel_name] = collections.OrderedDict()
+        if kernel_name not in trace_dict[layer_name][propagation][batch_size]:
+          trace_dict[layer_name][propagation][batch_size][kernel_name] = collections.OrderedDict()
         # Obtain the metric value
         if regex_int.match(row[metric_avg_value_idx]):
           content = row[metric_avg_value_idx]
@@ -72,7 +77,7 @@ def GenerateDict():
           content = row[metric_avg_value_idx]
           value = float(regex_float.match(content).group(1))
         metric_name = row[metric_name_idx]
-        trace_dict[layer_name][batch_size][kernel_name][metric_name] = value
+        trace_dict[layer_name][propagation][batch_size][kernel_name][metric_name] = value
 
 usage = "usage: %prog [option1] arg1,arg2 [option2] arg1,arg2"
 def main():
@@ -120,24 +125,26 @@ def main():
       print "Layer name INVALID!!!"
       exit()
     print "In layer: ", layer
-    for batchsize in batchsize_list:
-      batch_size = int(batchsize)
-      if batch_size not in trace_dict[layer]:
-        print " Batch size INVALID!!!"
-        exit()
-      print "For batch size: ", batch_size
-      if len(kernels_list) == 0:
-        kernels_list = trace_dict[layer][batch_size]
-      for kernel in kernels_list:
-        if kernel not in trace_dict[layer][batch_size]:
-          print "Kernel name INVALID!!!"
+    for propagation in trace_dict[layer]:
+      print "Propagation: ", propagation
+      for batchsize in batchsize_list:
+        batch_size = int(batchsize)
+        if batch_size not in trace_dict[layer][propagation]:
+          print " Batch size INVALID!!!"
           exit()
-        print "   In Kernel: ", kernel
-        for metric in metrics_list:
-          if metric not in trace_dict[layer][batch_size][kernel]:
-            print "Metric name: ", metric, " INVALID!!!"
+        print "For batch size: ", batch_size
+        if len(kernels_list) == 0:
+          kernels_list = trace_dict[layer][propagation][batch_size]
+        for kernel in kernels_list:
+          if kernel not in trace_dict[layer][propagation][batch_size]:
+            print "Kernel name INVALID!!!"
             exit()
-          print "     Metric: ", metric," ",  trace_dict[layer][batch_size][kernel][metric]
+          print "   In Kernel: ", kernel
+          for metric in metrics_list:
+            if metric not in trace_dict[layer][propagation][batch_size][kernel]:
+              print "Metric name: ", metric, " INVALID!!!"
+              exit()
+            print "     Metric: ", metric," ",  trace_dict[layer][propagation][batch_size][kernel][metric]
 
 
 if __name__ == '__main__':
