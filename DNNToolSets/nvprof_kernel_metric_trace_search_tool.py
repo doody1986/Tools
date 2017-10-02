@@ -40,7 +40,7 @@ def ObtainMetricTraceFiles(trace_dir):
 #--------kernel
 #----------metric
 metric_trace_dict = collections.OrderedDict()
-def GenerateMetricDict():
+def GenerateMetricDict(arch):
   # Number of useless lines
   num_useless_lines = 6
   for f in metrics_trace_list:
@@ -60,7 +60,7 @@ def GenerateMetricDict():
       metric_trace_dict[batch_size] = collections.OrderedDict()
     # Query the database
     conn = sqlite3.connect(db_path+'/alexnet_kernel.db')
-    table_name = 'kernel_dict'
+    table_name = 'alexnet_kernel_dict'
     c = conn.cursor()
 
     for i in range(num_useless_lines):
@@ -81,7 +81,7 @@ def GenerateMetricDict():
         print "Kernel name not consistent!!!"
         exit()
       full_name = kernel_name + template_arg_from_trace
-      query_layer_name_str = "SELECT layername FROM "+table_name+" WHERE batchsize = "+batch_size+" AND fullname = '"+full_name+"' AND invocationorder = "+invocation_order
+      query_layer_name_str = "SELECT layername FROM "+table_name+" WHERE batchsize = "+batch_size+" AND fullname = '"+full_name+"' AND invocationorder = "+invocation_order+" AND arch = '"+arch+"'"
       c.execute(query_layer_name_str)
       layer_name_from_sql = c.fetchall()
       #if len(layer_name_from_sql) > 1 or len(layer_name_from_sql) == 0:
@@ -96,7 +96,7 @@ def GenerateMetricDict():
           continue
       layer_name = layer_name_from_sql[0][0].encode("utf-8")
 
-      query_propagation_str = "SELECT propagation FROM "+table_name+" WHERE batchsize = "+batch_size+" AND fullname = '"+full_name+"' AND invocationorder = "+invocation_order
+      query_propagation_str = "SELECT propagation FROM "+table_name+" WHERE batchsize = "+batch_size+" AND fullname = '"+full_name+"' AND invocationorder = "+invocation_order+" AND arch = '"+arch+"'"
       c.execute(query_propagation_str)
       propagation_from_sql = c.fetchall()
       #if len(propagation_from_sql) > 1 or len(propagation_from_sql) == 0:
@@ -130,7 +130,7 @@ def GenerateMetricDict():
       metric_name = row[metric_name_idx]
       metric_trace_dict[batch_size][layer_name][propagation][kernel_name][metric_name] = value
 
-def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, figure_dir):
+def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, arch, figure_dir):
   metrics_dict = collections.OrderedDict()
   xtick_name = collections.OrderedDict()
   count = collections.OrderedDict()
@@ -139,34 +139,45 @@ def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, fi
       metrics_dict[propagation] = collections.OrderedDict()
       xtick_name[propagation] = []
       count[propagation] = 0
-    for layer in layer_list:
-      for kernel in metric_trace_dict[batch_size][layer][propagation]:
-        count[propagation] += 1
-        suffix = ""
-        if kernel == "wgrad_alg1_engine" or kernel == "sgemm_sm_heavy_nt_ldg" or "sgemm_sm35_ldg_nt" in kernel:
-          suffix = "_w"
-        if kernel == "dgrad_alg1_engine" or "sgemm_sm35_ldg_nn" in kernel:
-          suffix = "_d"
-        xtick_name[propagation].append(layer+suffix)
-        l1_hit_rate = 0.0
-        new_key = ""
-        cumulative_value = 0.0
-        for metric in metrics_list:
-          if title == "CacheHitRate":
-            new_key = "l1_hit_rate"
-            if new_key not in metrics_dict[propagation]:
-              metrics_dict[propagation][new_key] = []
-            if metric == "l1_cache_global_hit_rate" or metric == "l1_cache_local_hit_rate":
-              l1_hit_rate += metric_trace_dict[batch_size][layer][propagation][kernel][metric]
-              continue
-          key = metric
-          if key not in metrics_dict[propagation]:
-            metrics_dict[propagation][key] = []
-          value = metric_trace_dict[batch_size][layer][propagation][kernel][metric]
-          cumulative_value += value
-          metrics_dict[propagation][key].append(value)
-        if title == "CacheHitRate":
-          metrics_dict[propagation][new_key].append(l1_hit_rate)
+      for layer in layer_list:
+        l_list = [layer]
+        if "Backward" in propagation:
+          if "conv" in layer:
+            l_list = []
+            l_list.append(layer+"_w")
+            if "conv1" not in layer:
+              l_list.append(layer+"_d")
+          if "fc" in layer:
+            l_list = []
+            l_list.append(layer+"_w")
+            l_list.append(layer+"_d")
+        for l in l_list:
+          if propagation in metric_trace_dict[batch_size][l]:
+            for kernel in metric_trace_dict[batch_size][l][propagation]:
+              count[propagation] += 1
+              xtick_name[propagation].append(l)
+              l1_hit_rate = 0.0
+              new_key = ""
+              cumulative_value = 0.0
+              for metric in metrics_list:
+                if title == "CacheHitRate" and arch == "kepler":
+                  new_key = "l1_hit_rate"
+                  if new_key not in metrics_dict[propagation]:
+                    metrics_dict[propagation][new_key] = []
+                  if metric == "l1_cache_global_hit_rate" or metric == "l1_cache_local_hit_rate":
+                    l1_hit_rate += metric_trace_dict[batch_size][l][propagation][kernel][metric]
+                    continue
+                key = metric
+                if key not in metrics_dict[propagation]:
+                  metrics_dict[propagation][key] = []
+                if metric not in metric_trace_dict[batch_size][l][propagation][kernel]:
+                  value = 0.0
+                else:
+                  value = metric_trace_dict[batch_size][l][propagation][kernel][metric]
+                cumulative_value += value
+                metrics_dict[propagation][key].append(value)
+              if title == "CacheHitRate" and arch == "kepler":
+                metrics_dict[propagation][new_key].append(l1_hit_rate)
 
   #print metrics_dict
 
@@ -270,6 +281,8 @@ def main():
   parser = OptionParser(usage)
   parser.add_option("-d", "--trace_dir", type="string", dest="tracedir",
                     help="tracedir", metavar="TRACE_DIR")
+  parser.add_option("-a", "--arch", type="string", dest="arch",
+                    help="arch", metavar="ARCH")
   parser.add_option("-n", "--batch-size", type="string", dest="batchsize",
                     help="Batch size seperated by coma", metavar="BATCH_SIZE")
   parser.add_option("-l", "--layer", type="string", dest="layername",
@@ -282,7 +295,6 @@ def main():
                     help="Plot title", metavar="TITLE")
 
   (options, args) = parser.parse_args()
-  print "ARGS:",args
   if len(args) > 0:
     print "Arguments parsing fail. Possible reason: space occurred between arguments"
     exit()
@@ -294,12 +306,18 @@ def main():
   title = ""
   trace_dir = ""
   figure_dir = ""
+  arch = ""
 
   if not options.tracedir:
     parser.error("Trace Directory not given")
   else:
     trace_dir = options.tracedir
   figure_dir = trace_dir + "/figures/"
+
+  if not options.arch:
+    parser.error("Architecture not given")
+  else:
+    arch = options.arch
 
   if options.layername != None:
     layer_list = options.layername.split(",")
@@ -315,7 +333,7 @@ def main():
 
   ObtainMetricTraceFiles(trace_dir)
 
-  GenerateMetricDict()
+  GenerateMetricDict(arch)
   if len(metric_trace_dict) == 0:
     print "NO trace found!!!"
     exit()
@@ -350,9 +368,9 @@ def main():
   # Plot
   for batch_size in batchsize_list:
     if "Stall" in title:
-      BarChartByLayerName(title, layer_list, batch_size, metrics_list, True, figure_dir)
+      BarChartByLayerName(title, layer_list, batch_size, metrics_list, True, arch, figure_dir)
     else:
-      BarChartByLayerName(title, layer_list, batch_size, metrics_list, False, figure_dir)
+      BarChartByLayerName(title, layer_list, batch_size, metrics_list, False, arch, figure_dir)
 
 if __name__ == '__main__':
   main()
