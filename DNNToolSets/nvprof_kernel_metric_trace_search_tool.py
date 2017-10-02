@@ -128,6 +128,8 @@ def GenerateMetricDict(arch):
         if regex_float.match(content).group(2) == "MB":
           value /= float(1024)
       metric_name = row[metric_name_idx]
+      if "utilization" in metric_name:
+        value = value * 10
       metric_trace_dict[batch_size][layer_name][propagation][kernel_name][metric_name] = value
 
 def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, arch, figure_dir):
@@ -251,8 +253,10 @@ def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, ar
       ax.set_ylabel('Number of Memory Transactions')
     elif title == "RegionalMemTransaction2":
       ax.set_ylabel('Number of Memory Transactions')
-    elif title == "Replay":
-      ax.set_ylabel('Number of Replay')
+    elif title == "ReplayRate":
+      ax.set_ylabel('Averaged Number of Inst Replays')
+    elif title == "IPC":
+      ax.set_ylabel('IPC')
 
     ax.grid(True)
     ax.set_xticks(index + bar_width * num_metrics / 2)
@@ -264,9 +268,7 @@ def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, ar
                ncol=2, mode="expand", borderaxespad=0.)
     ax.set_xlim(min(index)-bar_width, max(index)+bar_width*num_metrics)
 
-    if "Utilization" in title:
-      ax.set_ylim([0,10])
-    elif "Stall" in title:
+    if "Utilization" in title or "Stall" in title:
       ax.set_ylim([0,100])
     #ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.1e'))
     fig.tight_layout()
