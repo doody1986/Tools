@@ -1,16 +1,28 @@
 #! /bin/bash
 
+if [ $# -eq 1 ]; then
+  echo "Archtecture:" $1
+else
+  echo "Usage: ./<script> <arch>"
+  exit
+fi
+
 # Setup directories
 WORK_DIR="$(pwd)"
-TRACE_DIR=alexnet_results_pascal
+ARCH=$1
+if [ $1 = "pascal" ]; then
+  TRACE_DIR=alexnet_results_pascal
+fi
+if [ $1 = "kepler" ]; then
+  TRACE_DIR=alexnet_results_kepler
+fi
 FIGURE_DIR=${WORK_DIR}/${TRACE_DIR}/figures/
 if [ ! -d "${FIGURE_DIR}" ]; then
   mkdir ${FIGURE_DIR}
 fi
 
-BATCH_SIZE_LIST=( 128 )
+BATCH_SIZE_LIST=( 16 64 128 )
 PROFILER=nvprof
-ARCH=pascal
 LAYERS=conv1,relu1,lrn1,pool1,conv2,relu2,lrn2,pool2,conv3,relu3,conv4,relu4,conv5,relu5,pool5,fc6,relu6,fc7,relu7,fc8,softmax
 if [ "${TRACE_DIR}" == "alexnet_results_pascal" ]; then
   CACHE_HIT_RATE_METRICS=tex_cache_hit_rate,l2_tex_read_hit_rate,l2_tex_write_hit_rate

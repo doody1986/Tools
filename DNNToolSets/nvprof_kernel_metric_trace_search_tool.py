@@ -90,7 +90,6 @@ def GenerateMetricDict(arch):
       if len(layer_name_from_sql) == 0:
         if kernel_name != 'dgrad_alg1_engine':
           print "Illegal layers!!!"
-          print layer_name_from_sql
           exit()
         else:
           continue
@@ -105,7 +104,6 @@ def GenerateMetricDict(arch):
       if len(propagation_from_sql) == 0:
         if kernel_name != 'dgrad_alg1_engine':
           print "Ilegal propagation!!!"
-          print propagation_from_sql
           exit()
         else:
           continue
@@ -202,8 +200,8 @@ def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, ar
     index = np.arange(n_groups) * 1.3 * num_metrics * bar_width
 
     i = 0
-    matplotlib.rc('font', size=35)
-    fig = plt.figure(figsize=(40, 10))
+    matplotlib.rc('font', size=40)
+    fig = plt.figure(figsize=(70, 10))
     ax = fig.add_subplot(111)
     bottom_list = [0] * n_groups
     for metric in metrics_dict[propagation]:
@@ -242,9 +240,9 @@ def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, ar
     elif title == "MemThroughput1" or title == "MemThroughput2":
       ax.set_ylabel('Troughput(GB/s)')
     elif title == "MemUtilization":
-      ax.set_ylabel('Utilization of Memory Components')
+      ax.set_ylabel('Utilization of Memory Components(%)')
     elif title == "CuUtilization":
-      ax.set_ylabel('Utilization of Computing Resources')
+      ax.set_ylabel('Utilization of Computing Resources(%)')
     elif title == "Efficiency":
       ax.set_ylabel('Efficiency')
     elif title == "RegionalMemoryThroughput1":
@@ -257,8 +255,13 @@ def BarChartByLayerName(title, layer_list, batch_size, metrics_list, stacked, ar
       ax.set_ylabel('Averaged Number of Inst Replays')
     elif title == "IPC":
       ax.set_ylabel('IPC')
+    elif title == "StallReason":
+      ax.set_ylabel('Percentage(%)')
 
-    ax.grid(True)
+    if "Stall" not in title:
+      ax.grid(True)
+    else:
+      ax.grid(False)
     ax.set_xticks(index + bar_width * num_metrics / 2)
     #ax.set_xticklabels(layer_list[len(layer_list)-len(metrics_dict[kernel][metric]):])
     ax.set_xticklabels(xtick_name[propagation], rotation='45', ha='right')

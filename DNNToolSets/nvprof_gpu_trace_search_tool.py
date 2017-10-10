@@ -202,8 +202,8 @@ def BarChartByTitle(title, batch_size_list, arch, figure_dir):
   color_map = ['0.5', '0.5', '0.95', '0.95', '0.3', '0.35', '0.65', '0.75', '0.45', '0.5', '0.8']
   hatch_map = ['', '/', '', '/', '', '\\', '', '\\', '-', '+']
   del_idx_dict = collections.OrderedDict()
-  exclude_conv = True
-  conv_only = False
+  exclude_conv = False
+  conv_only = True
 
   for arch in gpu_dict:
     for propagation in gpu_dict[arch]:
@@ -213,8 +213,8 @@ def BarChartByTitle(title, batch_size_list, arch, figure_dir):
       n_groups = count[arch][propagation][batch_size_keys[0]]
 
       i = 0
-      matplotlib.rc('font', size=35)
-      fig = plt.figure(figsize=(40, 10))
+      matplotlib.rc('font', size=40)
+      fig = plt.figure(figsize=(70, 10))
       ax = fig.add_subplot(111)
 
       if arch not in del_idx_dict:
