@@ -11,7 +11,7 @@ fi
 WORK_DIR="$(pwd)"
 ARCH=$1
 if [ $1 = "pascal" ]; then
-  TRACE_DIR=alexnet_results_pascal
+  TRACE_DIR=alexnet_results_pascal_l1_enable
 fi
 if [ $1 = "kepler" ]; then
   TRACE_DIR=alexnet_results_kepler
@@ -23,7 +23,8 @@ fi
 
 BATCH_SIZE_LIST=(16 64 128 )
 PROFILER=nvprof
-LAYERS=conv1,relu1,lrn1,pool1,conv2,relu2,lrn2,pool2,conv3,relu3,conv4,relu4,conv5,relu5,pool5,fc6,relu6,fc7,relu7,fc8,softmax
+#LAYERS=conv1,relu1,lrn1,pool1,conv2,relu2,lrn2,pool2,conv3,relu3,conv4,relu4,conv5,relu5,pool5,fc6,relu6,fc7,relu7,fc8,softmax
+LAYERS=conv2,relu2,lrn2,pool2,fc6,softmax
 if [ "${TRACE_DIR}" == "alexnet_results_pascal" ]; then
   IPC_METRICS=executed_ipc
   FU_UTIL_METRICS=single_precision_fu_utilization,special_fu_utilization
@@ -42,9 +43,10 @@ do
 
   ${SCRIPT} -a ${ARCH} -d ${TRACE_DIR} -t Efficiency -l ${LAYERS} -n ${bs} -m issue_slot_utilization,flop_sp_efficiency
 
-  ${SCRIPT} -a ${ARCH} -d ${TRACE_DIR} -t StallReason -l ${LAYERS} -n ${bs} -m stall_inst_fetch,stall_exec_dependency,stall_memory_dependency,stall_texture,stall_sync,stall_other,stall_pipe_busy,stall_constant_memory_dependency,stall_memory_throttle,stall_not_selected
+  #${SCRIPT} -a ${ARCH} -d ${TRACE_DIR} -t StallReason -l ${LAYERS} -n ${bs} -m stall_inst_fetch,stall_exec_dependency,stall_memory_dependency,stall_texture,stall_sync,stall_other,stall_pipe_busy,stall_constant_memory_dependency,stall_memory_throttle,stall_not_selected
 
-  #${SCRIPT} -t FlopCountSP -l ${LAYERS} -n ${bs} -m flop_count_sp_add,flop_count_sp_mul,flop_count_sp_fma,flop_count_sp_special
+  #${SCRIPT} -a ${ARCH} -d ${TRACE_DIR} -t FlopCountSP -l ${LAYERS} -n ${bs} -m inst_fp_32
+  #${SCRIPT} -a ${ARCH} -d ${TRACE_DIR} -t FlopCountSP -l ${LAYERS} -n ${bs} -m ldst_executed
 
 done
 
